@@ -15,23 +15,48 @@ function Dashboard({ userId }) {
   const [nursingSeconds, setNursingSeconds] = useState(0);
   const [currentSide, setCurrentSide] = useState('left');
   const [activeSessionId, setActiveSessionId] = useState(null);
+  const [startTime, setStartTime] = useState(null);
 
   useEffect(() => {
     loadStats();
+    checkActiveSession();
     const interval = setInterval(loadStats, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, [userId]);
 
-  // Nursing timer effect
+  // Nursing timer effect - calculate elapsed time from start
   useEffect(() => {
     let interval;
-    if (isNursingActive) {
+    if (isNursingActive && startTime) {
       interval = setInterval(() => {
-        setNursingSeconds(s => s + 1);
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setNursingSeconds(elapsed);
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isNursingActive]);
+  }, [isNursingActive, startTime]);
+
+  const checkActiveSession = async () => {
+    const { data } = await supabase
+      .from('nursing_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .is('ended_at', null)
+      .order('started_at', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      const session = data[0];
+      const start = new Date(session.started_at).getTime();
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+
+      setActiveSessionId(session.id);
+      setCurrentSide(session.side);
+      setStartTime(start);
+      setNursingSeconds(elapsed);
+      setIsNursingActive(true);
+    }
+  };
 
   const loadStats = async () => {
     const today = new Date();
@@ -103,7 +128,8 @@ function Dashboard({ userId }) {
 
   const startNursing = async () => {
     try {
-      const startedAt = new Date().toISOString();
+      const now = Date.now();
+      const startedAt = new Date(now).toISOString();
       const { data, error } = await supabase
         .from('nursing_sessions')
         .insert({ user_id: userId, side: currentSide, started_at: startedAt, duration_seconds: 0 })
@@ -113,6 +139,8 @@ function Dashboard({ userId }) {
       if (error) throw error;
       if (data) {
         setActiveSessionId(data.id);
+        setStartTime(now);
+        setNursingSeconds(0);
         setIsNursingActive(true);
       }
     } catch (error) {
