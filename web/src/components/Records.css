@@ -1,0 +1,184 @@
+.records-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.records-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.records-page-header h2 {
+  font-size: 2rem;
+  color: #1f2937;
+  margin: 0;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+  background: white;
+  padding: 0.25rem;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.filter-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.filter-btn:hover {
+  background: #f3f4f6;
+}
+
+.filter-btn.active {
+  background: #6366f1;
+  color: white;
+}
+
+.records-count {
+  background: white;
+  padding: 1rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  color: #6b7280;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.records-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.no-records {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 12px;
+  color: #9ca3af;
+  font-size: 1.25rem;
+}
+
+.record-item {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+  border-left: 4px solid transparent;
+}
+
+.record-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.record-item.pee {
+  border-left-color: #93c5fd;
+}
+
+.record-item.poop {
+  border-left-color: #fcd34d;
+}
+
+.record-item.feeding {
+  border-left-color: #a78bfa;
+}
+
+.record-item.nursing {
+  border-left-color: #34d399;
+}
+
+.record-icon {
+  font-size: 2.5rem;
+}
+
+.record-info {
+  flex: 1;
+}
+
+.record-label {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.record-details {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.delete-btn {
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.delete-btn:hover {
+  background: #fecaca;
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .records-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .records-page-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .filter-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .filter-btn {
+    flex: 1;
+    padding: 0.5rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .record-item {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .record-icon {
+    font-size: 2rem;
+  }
+
+  .record-label {
+    font-size: 1rem;
+  }
+
+  .delete-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}
