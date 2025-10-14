@@ -95,27 +95,55 @@ function NursingScreen({ userId }: { userId: string }) {
   const [seconds, setSeconds] = useState(0);
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState<number | null>(null);
   const [lastSession, setLastSession] = useState<{ side: string; time: string } | null>(null);
 
+  // Timer çalışırken sürekli güncelle (arka planda da çalışır)
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isActive) {
+    if (isActive && startTime) {
       interval = setInterval(() => {
-        setSeconds(s => s + 1);
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setSeconds(elapsed);
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isActive]);
+  }, [isActive, startTime]);
 
+  // Uygulama açılınca aktif seans var mı kontrol et
   useEffect(() => {
     loadLastSession();
+    checkActiveSession();
   }, []);
+
+  const checkActiveSession = async () => {
+    const { data } = await supabase
+      .from('nursing_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .is('ended_at', null)
+      .order('started_at', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      const session = data[0];
+      const start = new Date(session.started_at).getTime();
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+
+      setActiveSessionId(session.id);
+      setCurrentSide(session.side);
+      setStartTime(start);
+      setSeconds(elapsed);
+      setIsActive(true);
+    }
+  };
 
   const loadLastSession = async () => {
     const { data } = await supabase
       .from('nursing_sessions')
       .select('*')
       .eq('user_id', userId)
+      .not('ended_at', 'is', null)
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -128,7 +156,8 @@ function NursingScreen({ userId }: { userId: string }) {
   };
 
   const startTimer = async () => {
-    const startedAt = new Date().toISOString();
+    const now = Date.now();
+    const startedAt = new Date(now).toISOString();
     const { data, error } = await supabase
       .from('nursing_sessions')
       .insert({ user_id: userId, side: currentSide, started_at: startedAt, duration_seconds: 0 })
@@ -137,6 +166,8 @@ function NursingScreen({ userId }: { userId: string }) {
 
     if (data) {
       setActiveSessionId(data.id);
+      setStartTime(now);
+      setSeconds(0);
       setIsActive(true);
     }
   };
