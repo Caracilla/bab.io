@@ -1,6 +1,6 @@
-# Bebek Takip Uygulaması
+# 🍼 Bab.io - Bebek Takip Uygulaması
 
-Bebeğinizin çiş, kaka, mama ve emzirme kayıtlarını takip etmek için pratik bir uygulama. Android, iOS ve Web desteği ile.
+Bebeklerin çiş, kaka, mama ve emzirme döngülerini takip etmek için geliştirilmiş pratik bir uygulama. Android, iOS ve Web desteği ile.
 
 ## Özellikler
 
@@ -18,16 +18,21 @@ Bebeğinizin çiş, kaka, mama ve emzirme kayıtlarını takip etmek için prati
 
 ### Web Dashboard
 - ✅ **Ana Sayfa**:
+  - Hızlı kayıt butonları (Çiş, Kaka, Mama)
+  - Emzirme zamanlayıcısı
   - Günlük özet istatistikler
-  - Son kayıtlar listesi
+- ✅ **Kayıtlar**:
+  - Tüm kayıtların listesi
+  - Filtreleme (Tümü, Bez, Mama, Emzirme)
   - Kayıt silme
 - ✅ **Raporlar**:
-  - Bez değişimi trendi (grafik)
-  - Çiş/Kaka dağılımı (pasta grafik)
-  - Mama beslenme grafiği
-  - Emzirme seansları grafiği
+  - Günlük bez değişimi grafiği
+  - Günlük mama grafiği
+  - Günlük emzirme sayısı grafiği
+  - Günlük emzirme süresi grafiği
   - 7/30/90 günlük dönem seçimi
 - ✅ **Mobil Uyumlu**: Responsive tasarım
+- ✅ **Demo Hesap**: demo@example.com / demo123456
 - ✅ **Kimlik Doğrulama**: Supabase Auth ile güvenli giriş
 
 ## Kurulum
@@ -42,48 +47,66 @@ Bebeğinizin çiş, kaka, mama ve emzirme kayıtlarını takip etmek için prati
 ### 2. Mobil Uygulama (React Native)
 
 ```bash
-cd baby-tracker
+cd mobile
 
-# Supabase ayarlarını güncelle
-# lib/supabase.ts dosyasındaki URL ve KEY'i değiştir
+# .env dosyası oluştur
+cp .env.example .env
+# .env dosyasını Supabase bilgilerinizle düzenleyin
 
-# Bağımlılıkları yükle (zaten yüklü)
+# Bağımlılıkları yükle
 npm install
 
 # Android'de çalıştır
-npm run android
+npx expo start
 
-# iOS'te çalıştır (Mac gerekir)
-npm run ios
-
-# Web'de test et
-npm run web
+# Expo Go uygulamasından QR kod ile bağlanın
 ```
 
 ### 3. Web Dashboard
 
 ```bash
-cd baby-tracker/web
+cd web
 
 # Supabase ayarlarını güncelle
 # src/supabase.js dosyasındaki URL ve KEY'i değiştir
 
-# Bağımlılıkları yükle (zaten yüklü)
+# Bağımlılıkları yükle
 npm install
 
 # Geliştirme sunucusunu başlat
 npm run dev
 
-# Tarayıcıda aç: http://localhost:3000
+# Tarayıcıda aç: http://localhost:5173
+```
+
+## 🏗️ Proje Yapısı
+
+```
+bab.io/
+├── mobile/                 # React Native (Expo) mobil uygulama
+│   ├── App.tsx            # Ana mobil uygulama
+│   ├── lib/supabase.ts    # Supabase config
+│   └── .env.example       # Çevre değişkenleri şablonu
+├── web/                   # React + Vite web uygulaması
+│   ├── src/
+│   │   ├── components/    # React bileşenleri
+│   │   └── supabase.js   # Supabase config
+│   └── package.json
+└── supabase-schema.sql    # Veritabanı şeması
 ```
 
 ## Supabase Yapılandırması
 
-`lib/supabase.ts` (Mobil) ve `web/src/supabase.js` (Web) dosyalarında:
+Mobil için `mobile/.env`:
+```
+EXPO_PUBLIC_SUPABASE_URL=your-project-url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
+Web için `web/src/supabase.js`:
 ```javascript
-const supabaseUrl = 'YOUR_SUPABASE_PROJECT_URL';
-const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabaseUrl = 'your-project-url';
+const supabaseAnonKey = 'your-anon-key';
 ```
 
 ## Veritabanı Şeması
