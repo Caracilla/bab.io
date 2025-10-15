@@ -16,6 +16,7 @@ function Dashboard({ userId }) {
   const [currentSide, setCurrentSide] = useState('left');
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [startTime, setStartTime] = useState(null);
+  const [pausedTime, setPausedTime] = useState(0); // Toplam duraklatılan süre
 
   useEffect(() => {
     loadStats();
@@ -24,17 +25,39 @@ function Dashboard({ userId }) {
     return () => clearInterval(interval);
   }, [userId]);
 
-  // Nursing timer effect - calculate elapsed time from start
+  // Nursing timer effect - calculate elapsed time continuously
   useEffect(() => {
     let interval;
-    if (isNursingActive && startTime) {
-      interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    let animationFrame;
+
+    const updateTimer = () => {
+      if (startTime && isNursingActive) {
+        const elapsed = Math.floor((Date.now() - startTime - pausedTime) / 1000);
         setNursingSeconds(elapsed);
+      }
+      animationFrame = requestAnimationFrame(updateTimer);
+    };
+
+    if (startTime) {
+      // Use both setInterval and requestAnimationFrame for reliability
+      interval = setInterval(() => {
+        if (startTime && isNursingActive) {
+          const elapsed = Math.floor((Date.now() - startTime - pausedTime) / 1000);
+          setNursingSeconds(elapsed);
+        }
       }, 1000);
+
+      // requestAnimationFrame için başlat
+      if (isNursingActive) {
+        animationFrame = requestAnimationFrame(updateTimer);
+      }
     }
-    return () => clearInterval(interval);
-  }, [isNursingActive, startTime]);
+
+    return () => {
+      clearInterval(interval);
+      cancelAnimationFrame(animationFrame);
+    };
+  }, [isNursingActive, startTime, pausedTime]);
 
   const checkActiveSession = async () => {
     const { data } = await supabase
@@ -48,13 +71,15 @@ function Dashboard({ userId }) {
     if (data && data.length > 0) {
       const session = data[0];
       const start = new Date(session.started_at).getTime();
-      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const paused = session.paused_duration || 0;
+      const elapsed = Math.floor((Date.now() - start - paused) / 1000);
 
       setActiveSessionId(session.id);
       setCurrentSide(session.side);
       setStartTime(start);
+      setPausedTime(paused);
       setNursingSeconds(elapsed);
-      setIsNursingActive(true);
+      setIsNursingActive(!session.is_paused);
     }
   };
 
@@ -132,7 +157,14 @@ function Dashboard({ userId }) {
       const startedAt = new Date(now).toISOString();
       const { data, error } = await supabase
         .from('nursing_sessions')
-        .insert({ user_id: userId, side: currentSide, started_at: startedAt, duration_seconds: 0 })
+        .insert({
+          user_id: userId,
+          side: currentSide,
+          started_at: startedAt,
+          duration_seconds: 0,
+          is_paused: false,
+          paused_duration: 0
+        })
         .select()
         .single();
 
@@ -141,6 +173,7 @@ function Dashboard({ userId }) {
         setActiveSessionId(data.id);
         setStartTime(now);
         setNursingSeconds(0);
+        setPausedTime(0);
         setIsNursingActive(true);
       }
     } catch (error) {
@@ -149,11 +182,51 @@ function Dashboard({ userId }) {
     }
   };
 
-  const pauseNursing = () => {
+  const pauseNursing = async () => {
+    if (!activeSessionId) return;
+
+    const currentElapsed = Math.floor((Date.now() - startTime - pausedTime) / 1000);
+    const pauseStartTime = Date.now();
+
+    // Veritabanında pause durumunu kaydet
+    await supabase
+      .from('nursing_sessions')
+      .update({
+        is_paused: true,
+        pause_start_time: pauseStartTime,
+        duration_seconds: currentElapsed
+      })
+      .eq('id', activeSessionId);
+
     setIsNursingActive(false);
   };
 
-  const resumeNursing = () => {
+  const resumeNursing = async () => {
+    if (!activeSessionId) return;
+
+    // Pause süresi hesapla
+    const { data } = await supabase
+      .from('nursing_sessions')
+      .select('pause_start_time, paused_duration')
+      .eq('id', activeSessionId)
+      .single();
+
+    if (data && data.pause_start_time) {
+      const pauseDuration = Date.now() - data.pause_start_time;
+      const totalPausedTime = (data.paused_duration || 0) + pauseDuration;
+
+      await supabase
+        .from('nursing_sessions')
+        .update({
+          is_paused: false,
+          paused_duration: totalPausedTime,
+          pause_start_time: null
+        })
+        .eq('id', activeSessionId);
+
+      setPausedTime(totalPausedTime);
+    }
+
     setIsNursingActive(true);
   };
 

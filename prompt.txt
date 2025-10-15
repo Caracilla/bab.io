@@ -1,0 +1,26 @@
+10:34:54 PM: Deploy site                                                   
+10:34:54 PM: ────────────────────────────────────────────────────────────────
+10:34:54 PM: ​
+10:34:54 PM: Section completed: deploying
+10:34:54 PM: ​
+10:34:54 PM: Configuration error                                           
+10:34:54 PM: ────────────────────────────────────────────────────────────────
+10:34:54 PM: ​
+10:34:54 PM:   Error message
+10:34:54 PM:   Deploy did not succeed: Deploy directory 'web/web/dist' does not exist
+10:34:54 PM: ​
+10:34:54 PM:   Resolved config
+10:34:54 PM:   build:
+10:34:54 PM:     base: /opt/build/repo/web
+10:34:54 PM:     command: npm run build
+10:34:54 PM:     commandOrigin: config
+10:34:54 PM:     publish: /opt/build/repo/web/web/dist
+10:34:54 PM:     publishOrigin: config
+10:34:54 PM:   redirects:
+10:34:54 PM:     - from: /*
+      status: 200
+      to: /index.html
+  redirectsOrigin: config
+10:34:54 PM: Build failed due to a user error: Build script returned non-zero exit code: 2
+10:34:54 PM: Failing build: Failed to build site
+10:34:54 PM: Failed during stage 'building site': Build script returned non-zero exit code: 2 (https://ntl.fyi/exit-code-2)
