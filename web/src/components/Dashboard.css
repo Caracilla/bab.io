@@ -58,6 +58,33 @@
   color: #4c1d95;
 }
 
+.sleep-btn {
+  background: #c084fc;
+  color: #581c87;
+  position: relative;
+}
+
+.sleep-btn.sleeping {
+  background: #4c1d95;
+  color: white;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.sleep-timer {
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+  font-weight: 700;
+}
+
 .nursing-section {
   background: white;
   padding: 2rem;
@@ -299,6 +326,10 @@
 
 .record-item.nursing {
   border-left-color: #34d399;
+}
+
+.record-item.sleep {
+  border-left-color: #c084fc;
 }
 
 .record-icon {

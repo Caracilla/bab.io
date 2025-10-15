@@ -7,6 +7,7 @@ function Reports({ userId }) {
   const [period, setPeriod] = useState('week');
   const [dailyActivity, setDailyActivity] = useState([]);
   const [nursingDuration, setNursingDuration] = useState([]);
+  const [sleepDuration, setSleepDuration] = useState([]);
   const [summary, setSummary] = useState({
     totalDiapers: 0,
     totalFeedings: 0,
@@ -14,7 +15,10 @@ function Reports({ userId }) {
     avgDiaperPerDay: 0,
     avgFeedingPerDay: 0,
     avgNursingPerDay: 0,
-    totalNursingMinutes: 0
+    totalNursingMinutes: 0,
+    totalSleep: 0,
+    avgSleepPerDay: 0,
+    totalSleepMinutes: 0
   });
 
   useEffect(() => {
@@ -32,15 +36,17 @@ function Reports({ userId }) {
 
   const loadAllData = async (startDate, days) => {
     // Fetch all data in parallel
-    const [diaperData, feedingData, nursingData] = await Promise.all([
+    const [diaperData, feedingData, nursingData, sleepData] = await Promise.all([
       supabase.from('diaper_changes').select('*').eq('user_id', userId).gte('created_at', startDate.toISOString()),
       supabase.from('feeding_records').select('*').eq('user_id', userId).gte('created_at', startDate.toISOString()),
-      supabase.from('nursing_sessions').select('*').eq('user_id', userId).gte('created_at', startDate.toISOString())
+      supabase.from('nursing_sessions').select('*').eq('user_id', userId).gte('created_at', startDate.toISOString()),
+      supabase.from('sleep_sessions').select('*').eq('user_id', userId).eq('is_active', false).gte('created_at', startDate.toISOString())
     ]);
 
     const diapers = diaperData.data || [];
     const feedings = feedingData.data || [];
     const nursings = nursingData.data || [];
+    const sleeps = sleepData.data || [];
 
     // Günlük aktivite grafiği (tüm aktiviteler birlikte)
     const dayMap = {};
@@ -77,8 +83,19 @@ function Reports({ userId }) {
 
     setNursingDuration(Object.values(nursingDayMap));
 
+    // Uyku süreleri (günlük toplam)
+    const sleepDayMap = {};
+    sleeps.forEach(item => {
+      const dayKey = new Date(item.started_at).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' });
+      if (!sleepDayMap[dayKey]) sleepDayMap[dayKey] = { day: dayKey, dakika: 0 };
+      sleepDayMap[dayKey].dakika += Math.floor(item.duration_seconds / 60);
+    });
+
+    setSleepDuration(Object.values(sleepDayMap));
+
     // Özet istatistikler
     const totalNursingMinutes = nursings.reduce((sum, n) => sum + Math.floor(n.duration_seconds / 60), 0);
+    const totalSleepMinutes = sleeps.reduce((sum, s) => sum + Math.floor(s.duration_seconds / 60), 0);
 
     setSummary({
       totalDiapers: diapers.length,
@@ -87,7 +104,10 @@ function Reports({ userId }) {
       avgDiaperPerDay: Math.round(diapers.length / days),
       avgFeedingPerDay: Math.round(feedings.length / days),
       avgNursingPerDay: Math.round(nursings.length / days),
-      totalNursingMinutes
+      totalNursingMinutes,
+      totalSleep: sleeps.length,
+      avgSleepPerDay: Math.round(sleeps.length / days),
+      totalSleepMinutes
     });
   };
 
@@ -140,6 +160,14 @@ function Reports({ userId }) {
             <h4>Emzirme</h4>
             <div className="summary-value">{summary.totalNursing} seans</div>
             <div className="summary-avg">Toplam: {summary.totalNursingMinutes} dk</div>
+          </div>
+        </div>
+        <div className="summary-card">
+          <div className="summary-icon">😴</div>
+          <div className="summary-info">
+            <h4>Uyku</h4>
+            <div className="summary-value">{summary.totalSleep} uyku</div>
+            <div className="summary-avg">Toplam: {summary.totalSleepMinutes} dk</div>
           </div>
         </div>
       </div>
@@ -198,6 +226,22 @@ function Reports({ userId }) {
                 <Tooltip />
                 <Legend />
                 <Line type="monotone" dataKey="dakika" stroke="#34d399" strokeWidth={3} name="Süre (dakika)" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {sleepDuration.length > 0 && (
+          <div className="chart-card">
+            <h3>😴 Günlük Uyku Süresi</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={sleepDuration}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis label={{ value: 'Dakika', angle: -90, position: 'insideLeft' }} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="dakika" stroke="#c084fc" strokeWidth={3} name="Süre (dakika)" />
               </LineChart>
             </ResponsiveContainer>
           </div>

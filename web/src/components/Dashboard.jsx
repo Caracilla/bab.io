@@ -19,10 +19,17 @@ function Dashboard({ userId }) {
   const [startTime, setStartTime] = useState(null);
   const [pausedTime, setPausedTime] = useState(0); // Toplam duraklatılan süre
 
+  // Sleep timer state
+  const [isSleeping, setIsSleeping] = useState(false);
+  const [sleepSeconds, setSleepSeconds] = useState(0);
+  const [activeSleepId, setActiveSleepId] = useState(null);
+  const [sleepStartTime, setSleepStartTime] = useState(null);
+
   useEffect(() => {
     loadStats();
     loadRecentRecords();
     checkActiveSession();
+    checkActiveSleep();
     const interval = setInterval(() => {
       loadStats();
       loadRecentRecords();
@@ -63,6 +70,18 @@ function Dashboard({ userId }) {
       cancelAnimationFrame(animationFrame);
     };
   }, [isNursingActive, startTime, pausedTime]);
+
+  // Sleep timer effect
+  useEffect(() => {
+    let interval;
+    if (isSleeping && sleepStartTime) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - sleepStartTime) / 1000);
+        setSleepSeconds(elapsed);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isSleeping, sleepStartTime]);
 
   const checkActiveSession = async () => {
     const { data } = await supabase
@@ -151,6 +170,14 @@ function Dashboard({ userId }) {
       .order('created_at', { ascending: false })
       .limit(10);
 
+    const { data: sleepData } = await supabase
+      .from('sleep_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', false)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
     if (diaperData) {
       allRecords.push(...diaperData.map(r => ({ ...r, recordType: 'diaper' })));
     }
@@ -159,6 +186,9 @@ function Dashboard({ userId }) {
     }
     if (nursingData) {
       allRecords.push(...nursingData.map(r => ({ ...r, recordType: 'nursing' })));
+    }
+    if (sleepData) {
+      allRecords.push(...sleepData.map(r => ({ ...r, recordType: 'sleep' })));
     }
 
     // Sort by date and take top 10
@@ -181,6 +211,8 @@ function Dashboard({ userId }) {
         await supabase.from('feeding_records').delete().eq('id', record.id);
       } else if (record.recordType === 'nursing') {
         await supabase.from('nursing_sessions').delete().eq('id', record.id);
+      } else if (record.recordType === 'sleep') {
+        await supabase.from('sleep_sessions').delete().eq('id', record.id);
       }
       loadRecentRecords();
       loadStats();
@@ -330,6 +362,74 @@ function Dashboard({ userId }) {
     setCurrentSide(currentSide === 'left' ? 'right' : 'left');
   };
 
+  // Sleep functions
+  const checkActiveSleep = async () => {
+    const { data } = await supabase
+      .from('sleep_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('started_at', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      const session = data[0];
+      const start = new Date(session.started_at).getTime();
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+
+      setActiveSleepId(session.id);
+      setSleepStartTime(start);
+      setSleepSeconds(elapsed);
+      setIsSleeping(true);
+    }
+  };
+
+  const toggleSleep = async () => {
+    if (!isSleeping) {
+      // Start sleep
+      const now = Date.now();
+      const startedAt = new Date(now).toISOString();
+      const { data, error } = await supabase
+        .from('sleep_sessions')
+        .insert({
+          user_id: userId,
+          started_at: startedAt,
+          duration_seconds: 0,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (data) {
+        setActiveSleepId(data.id);
+        setSleepStartTime(now);
+        setSleepSeconds(0);
+        setIsSleeping(true);
+      }
+    } else {
+      // Wake up - end sleep
+      if (!activeSleepId) return;
+
+      const endedAt = new Date().toISOString();
+      await supabase
+        .from('sleep_sessions')
+        .update({
+          duration_seconds: sleepSeconds,
+          ended_at: endedAt,
+          is_active: false
+        })
+        .eq('id', activeSleepId);
+
+      alert(`✅ Uyku tamamlandı: ${formatDuration(sleepSeconds)}`);
+      setIsSleeping(false);
+      setSleepSeconds(0);
+      setActiveSleepId(null);
+      setSleepStartTime(null);
+      loadStats();
+      loadRecentRecords();
+    }
+  };
+
   return (
     <div className="dashboard">
       <section className="quick-actions">
@@ -343,6 +443,19 @@ function Dashboard({ userId }) {
           </button>
           <button className="quick-btn feeding-btn" onClick={() => addQuickRecord('feeding')}>
             🍼 Mama
+          </button>
+          <button
+            className={`quick-btn sleep-btn ${isSleeping ? 'sleeping' : ''}`}
+            onClick={toggleSleep}
+          >
+            {isSleeping ? (
+              <>
+                😴 Uyandı
+                <div className="sleep-timer">{formatDuration(sleepSeconds)}</div>
+              </>
+            ) : (
+              '😴 Uyudu'
+            )}
           </button>
         </div>
       </section>
@@ -469,6 +582,11 @@ function Dashboard({ userId }) {
                 label = `Emzirme (${record.side === 'left' ? 'Sol' : 'Sağ'})`;
                 details = `${new Date(record.started_at).toLocaleString('tr-TR')} - ${formatDuration(record.duration_seconds)}`;
                 className += ' nursing';
+              } else if (record.recordType === 'sleep') {
+                icon = '😴';
+                label = 'Uyku';
+                details = `${new Date(record.started_at).toLocaleString('tr-TR')} - ${formatDuration(record.duration_seconds)}`;
+                className += ' sleep';
               }
 
               return (
