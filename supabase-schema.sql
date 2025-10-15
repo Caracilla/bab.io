@@ -27,15 +27,28 @@ CREATE TABLE nursing_sessions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Sleep sessions table (Uyku kayıtları)
+CREATE TABLE sleep_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL,
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  ended_at TIMESTAMP WITH TIME ZONE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_diaper_user_created ON diaper_changes(user_id, created_at DESC);
 CREATE INDEX idx_feeding_user_created ON feeding_records(user_id, created_at DESC);
 CREATE INDEX idx_nursing_user_created ON nursing_sessions(user_id, created_at DESC);
+CREATE INDEX idx_sleep_user_created ON sleep_sessions(user_id, created_at DESC);
 
 -- Enable Row Level Security
 ALTER TABLE diaper_changes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feeding_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nursing_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sleep_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (users can only see their own data)
 CREATE POLICY "Users can view own diaper changes" ON diaper_changes
@@ -66,4 +79,16 @@ CREATE POLICY "Users can update own nursing sessions" ON nursing_sessions
   FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own nursing sessions" ON nursing_sessions
+  FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own sleep sessions" ON sleep_sessions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own sleep sessions" ON sleep_sessions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own sleep sessions" ON sleep_sessions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own sleep sessions" ON sleep_sessions
   FOR DELETE USING (auth.uid() = user_id);

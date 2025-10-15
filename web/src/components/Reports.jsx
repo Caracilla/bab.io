@@ -84,9 +84,9 @@ function Reports({ userId }) {
       totalDiapers: diapers.length,
       totalFeedings: feedings.length,
       totalNursing: nursings.length,
-      avgDiaperPerDay: (diapers.length / days).toFixed(1),
-      avgFeedingPerDay: (feedings.length / days).toFixed(1),
-      avgNursingPerDay: (nursings.length / days).toFixed(1),
+      avgDiaperPerDay: Math.round(diapers.length / days),
+      avgFeedingPerDay: Math.round(feedings.length / days),
+      avgNursingPerDay: Math.round(nursings.length / days),
       totalNursingMinutes
     });
   };
