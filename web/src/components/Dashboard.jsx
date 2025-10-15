@@ -9,6 +9,7 @@ function Dashboard({ userId }) {
     todayNursing: 0,
     lastNursing: null
   });
+  const [recentRecords, setRecentRecords] = useState([]);
 
   // Nursing timer state
   const [isNursingActive, setIsNursingActive] = useState(false);
@@ -20,8 +21,12 @@ function Dashboard({ userId }) {
 
   useEffect(() => {
     loadStats();
+    loadRecentRecords();
     checkActiveSession();
-    const interval = setInterval(loadStats, 30000); // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadStats();
+      loadRecentRecords();
+    }, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, [userId]);
 
@@ -121,6 +126,70 @@ function Dashboard({ userId }) {
     });
   };
 
+  const loadRecentRecords = async () => {
+    const allRecords = [];
+
+    // Fetch recent records from all tables
+    const { data: diaperData } = await supabase
+      .from('diaper_changes')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    const { data: feedingData } = await supabase
+      .from('feeding_records')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    const { data: nursingData } = await supabase
+      .from('nursing_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (diaperData) {
+      allRecords.push(...diaperData.map(r => ({ ...r, recordType: 'diaper' })));
+    }
+    if (feedingData) {
+      allRecords.push(...feedingData.map(r => ({ ...r, recordType: 'feeding' })));
+    }
+    if (nursingData) {
+      allRecords.push(...nursingData.map(r => ({ ...r, recordType: 'nursing' })));
+    }
+
+    // Sort by date and take top 10
+    allRecords.sort((a, b) => {
+      const aDate = new Date(a.created_at || a.started_at).getTime();
+      const bDate = new Date(b.created_at || b.started_at).getTime();
+      return bDate - aDate;
+    });
+
+    setRecentRecords(allRecords.slice(0, 10));
+  };
+
+  const deleteRecord = async (record) => {
+    if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
+
+    try {
+      if (record.recordType === 'diaper') {
+        await supabase.from('diaper_changes').delete().eq('id', record.id);
+      } else if (record.recordType === 'feeding') {
+        await supabase.from('feeding_records').delete().eq('id', record.id);
+      } else if (record.recordType === 'nursing') {
+        await supabase.from('nursing_sessions').delete().eq('id', record.id);
+      }
+      loadRecentRecords();
+      loadStats();
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('❌ Kayıt silinirken hata oluştu');
+    }
+  };
+
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -145,6 +214,7 @@ function Dashboard({ userId }) {
       }
 
       loadStats();
+      loadRecentRecords();
     } catch (error) {
       console.error('Add record error:', error);
       alert('❌ Kayıt eklenirken hata oluştu');
@@ -368,6 +438,52 @@ function Dashboard({ userId }) {
             {stats.lastNursing.side === 'left' ? 'Sol' : 'Sağ'} meme,{' '}
             {formatDuration(stats.lastNursing.duration_seconds)} ({' '}
             {new Date(stats.lastNursing.started_at).toLocaleString('tr-TR')} )
+          </div>
+        )}
+      </section>
+
+      <section className="recent-section">
+        <h2>Son Kayıtlar</h2>
+        {recentRecords.length === 0 ? (
+          <div className="no-records">Henüz kayıt yok</div>
+        ) : (
+          <div className="records-list">
+            {recentRecords.map((record) => {
+              let icon = '';
+              let label = '';
+              let details = '';
+              let className = 'record-item';
+
+              if (record.recordType === 'diaper') {
+                icon = record.type === 'pee' ? '💧' : '💩';
+                label = record.type === 'pee' ? 'Çiş' : 'Kaka';
+                details = new Date(record.created_at).toLocaleString('tr-TR');
+                className += record.type === 'pee' ? ' pee' : ' poop';
+              } else if (record.recordType === 'feeding') {
+                icon = '🍼';
+                label = 'Mama';
+                details = new Date(record.created_at).toLocaleString('tr-TR');
+                className += ' feeding';
+              } else if (record.recordType === 'nursing') {
+                icon = '🤱';
+                label = `Emzirme (${record.side === 'left' ? 'Sol' : 'Sağ'})`;
+                details = `${new Date(record.started_at).toLocaleString('tr-TR')} - ${formatDuration(record.duration_seconds)}`;
+                className += ' nursing';
+              }
+
+              return (
+                <div key={`${record.recordType}-${record.id}`} className={className}>
+                  <div className="record-icon">{icon}</div>
+                  <div className="record-info">
+                    <div className="record-label">{label}</div>
+                    <div className="record-details">{details}</div>
+                  </div>
+                  <button className="delete-btn" onClick={() => deleteRecord(record)}>
+                    Sil
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
